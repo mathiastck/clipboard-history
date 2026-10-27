@@ -2,7 +2,7 @@ package com.mattkanninen.cliphistory.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mattkanninen.cliphistory.data.local.ClipEntity
+import com.mattkanninen.cliphistory.data.ClipboardEntry
 import com.mattkanninen.cliphistory.data.repository.ClipRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class ClipHistoryUiState(
-    val clips: List<ClipEntity> = emptyList(),
+    val clips: List<ClipboardEntry> = emptyList(),
     val searchQuery: String = "",
     val selectedCategory: String = "All",
     val isLoading: Boolean = false
@@ -33,9 +33,9 @@ class ClipHistoryViewModel @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     private val _clips = _searchQuery.flatMapLatest { query ->
         if (query.isBlank()) {
-            repository.getAllClips()
+            repository.observeAll()
         } else {
-            repository.searchClips(query)
+            repository.search(query)
         }
     }
 
@@ -43,11 +43,17 @@ class ClipHistoryViewModel @Inject constructor(
         _clips,
         _searchQuery,
         _selectedCategory
-    ) { clips: List<ClipEntity>, query: String, category: String ->
+    ) { clips: List<ClipboardEntry>, query: String, category: String ->
         val filtered = if (category == "All") {
             clips
         } else {
-            clips.filter { it.category == category }
+            clips.filter { entry ->
+                when (category) {
+                    "URL" -> entry.content.startsWith("http://") || entry.content.startsWith("https://")
+                    "Code" -> entry.content.contains("{") || entry.content.contains("val ") || entry.content.contains("fun ")
+                    else -> true
+                }
+            }
         }
         ClipHistoryUiState(
             clips = filtered,
@@ -68,21 +74,21 @@ class ClipHistoryViewModel @Inject constructor(
         _selectedCategory.value = category
     }
 
-    fun onTogglePin(clip: ClipEntity) {
+    fun onTogglePin(clip: ClipboardEntry) {
         viewModelScope.launch {
             repository.togglePin(clip.id, clip.isPinned)
         }
     }
 
-    fun onDeleteClip(clip: ClipEntity) {
+    fun onDeleteClip(clip: ClipboardEntry) {
         viewModelScope.launch {
-            repository.deleteClip(clip)
+            repository.deleteById(clip.id)
         }
     }
 
     fun onClearHistory() {
         viewModelScope.launch {
-            repository.clearUnpinnedHistory()
+            repository.clearUnpinned()
         }
     }
 }

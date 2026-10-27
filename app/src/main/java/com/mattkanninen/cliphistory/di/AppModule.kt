@@ -2,6 +2,7 @@ package com.mattkanninen.cliphistory.di
 
 import android.content.Context
 import androidx.room.Room
+import com.mattkanninen.cliphistory.data.ClipboardDao
 import com.mattkanninen.cliphistory.data.local.ClipDao
 import com.mattkanninen.cliphistory.data.local.ClipDatabase
 import com.mattkanninen.cliphistory.data.repository.ClipRepository
@@ -34,7 +35,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideClipRepository(clipDao: ClipDao): ClipRepository {
-        return ClipRepositoryImpl(clipDao)
+    fun provideClipRepository(clipboardDao: ClipboardDao): ClipRepository {
+        return ClipRepositoryImpl(clipboardDao)
     }
 }

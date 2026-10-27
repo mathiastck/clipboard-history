@@ -1,7 +1,5 @@
 package com.mattkanninen.cliphistory.data
 
-import com.mattkanninen.cliphistory.data.local.ClipDao
-import com.mattkanninen.cliphistory.data.local.ClipEntity
 import com.mattkanninen.cliphistory.data.repository.ClipRepositoryImpl
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -12,24 +10,25 @@ import org.junit.Test
 
 class ClipRepositoryTest {
 
-    private val clipDao: ClipDao = mockk(relaxed = true)
+    private val clipboardDao: ClipboardDao = mockk(relaxed = true)
     private lateinit var repository: ClipRepositoryImpl
 
     @Before
     fun setup() {
-        repository = ClipRepositoryImpl(clipDao)
+        repository = ClipRepositoryImpl(clipboardDao)
     }
 
     @Test
     fun `saveClip inserts new clip when content is unique`() = runTest {
         val text = "https://kotlinlang.org"
-        coEvery { clipDao.findByContent(text) } returns null
+        val hash = HashUtils.sha256(text)
+        coEvery { clipboardDao.findByHash(hash) } returns null
 
         repository.saveClip(text)
 
         coVerify {
-            clipDao.insertClip(match {
-                it.content == text && it.category == ClipEntity.CATEGORY_URL
+            clipboardDao.insert(match {
+                it.content == text && it.contentHash == hash
             })
         }
     }
@@ -37,24 +36,23 @@ class ClipRepositoryTest {
     @Test
     fun `saveClip updates timestamp when content already exists`() = runTest {
         val text = "Sample text"
-        val existing = ClipEntity(id = 1, content = text, timestamp = 1000L)
-        coEvery { clipDao.findByContent(text) } returns existing
+        val hash = HashUtils.sha256(text)
+        val existing = ClipboardEntry(id = 1, content = text, timestamp = 1000L, contentHash = hash)
+        coEvery { clipboardDao.findByHash(hash) } returns existing
 
         repository.saveClip(text)
 
         coVerify {
-            clipDao.insertClip(match {
-                it.id == 1L && it.content == text && it.timestamp > 1000L
-            })
+            clipboardDao.updateTimestamp(1L, any())
         }
     }
 
     @Test
     fun `togglePin updates pin status in DAO`() = runTest {
-        repository.togglePin(clipId = 42L, currentPinnedState = false)
+        repository.togglePin(id = 42L, isPinned = false)
 
         coVerify {
-            clipDao.updatePinStatus(42L, true)
+            clipboardDao.togglePin(42L, true)
         }
     }
 }

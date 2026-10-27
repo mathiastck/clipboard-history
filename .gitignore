@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+build/
+.idea/
+.kotlin/
+gradle/config.properties
+hs_err_pid*.log

@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -42,13 +40,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mattkanninen.cliphistory.data.local.ClipEntity
+import com.mattkanninen.cliphistory.data.ClipboardEntry
 import com.mattkanninen.cliphistory.ui.main.ClipHistoryUiState
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -60,12 +57,12 @@ fun ClipHistoryScreen(
     uiState: ClipHistoryUiState,
     onSearchQueryChanged: (String) -> Unit,
     onCategorySelected: (String) -> Unit,
-    onTogglePin: (ClipEntity) -> Unit,
-    onDeleteClip: (ClipEntity) -> Unit,
+    onTogglePin: (ClipboardEntry) -> Unit,
+    onDeleteClip: (ClipboardEntry) -> Unit,
     onClearHistory: () -> Unit
 ) {
     val context = LocalContext.current
-    val categories = listOf("All", ClipEntity.CATEGORY_TEXT, ClipEntity.CATEGORY_URL, ClipEntity.CATEGORY_CODE)
+    val categories = listOf("All", "Text", "URL", "Code")
 
     Scaffold(
         topBar = {
@@ -158,7 +155,7 @@ fun ClipHistoryScreen(
 
 @Composable
 fun ClipItemCard(
-    clip: ClipEntity,
+    clip: ClipboardEntry,
     onCopyClick: () -> Unit,
     onTogglePin: () -> Unit,
     onDelete: () -> Unit
@@ -186,8 +183,14 @@ fun ClipItemCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val categoryText = when {
+                    clip.content.startsWith("http://") || clip.content.startsWith("https://") -> "URL"
+                    clip.content.contains("{") || clip.content.contains("val ") || clip.content.contains("fun ") -> "Code"
+                    else -> "Text"
+                }
+
                 Text(
-                    text = clip.category,
+                    text = categoryText,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold

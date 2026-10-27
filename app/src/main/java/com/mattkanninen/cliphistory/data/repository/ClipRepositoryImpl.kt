@@ -1,58 +1,52 @@
 package com.mattkanninen.cliphistory.data.repository
 
-import com.mattkanninen.cliphistory.data.local.ClipDao
-import com.mattkanninen.cliphistory.data.local.ClipEntity
+import com.mattkanninen.cliphistory.data.ClipboardDao
+import com.mattkanninen.cliphistory.data.ClipboardEntry
+import com.mattkanninen.cliphistory.data.HashUtils
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class ClipRepositoryImpl @Inject constructor(
-    private val clipDao: ClipDao
+    private val clipboardDao: ClipboardDao
 ) : ClipRepository {
 
-    override fun getAllClips(): Flow<List<ClipEntity>> = clipDao.getAllClips()
+    override fun observeAll(): Flow<List<ClipboardEntry>> = clipboardDao.observeAll()
 
-    override fun searchClips(query: String): Flow<List<ClipEntity>> = clipDao.searchClips(query)
+    override fun search(query: String): Flow<List<ClipboardEntry>> = clipboardDao.search(query)
 
-    override fun getPinnedClips(): Flow<List<ClipEntity>> = clipDao.getPinnedClips()
-
-    override suspend fun saveClip(content: String, sourceApp: String?) {
+    override suspend fun saveClip(content: String, sourcePackage: String?) {
         val trimmed = content.trim()
         if (trimmed.isEmpty()) return
 
-        val existing = clipDao.findByContent(trimmed)
+        val hash = HashUtils.sha256(trimmed)
+        val existing = clipboardDao.findByHash(hash)
+        val currentTime = System.currentTimeMillis()
+
         if (existing != null) {
-            // Update timestamp of existing clip
-            clipDao.insertClip(existing.copy(timestamp = System.currentTimeMillis()))
+            clipboardDao.updateTimestamp(existing.id, currentTime)
         } else {
-            val category = determineCategory(trimmed)
-            val entity = ClipEntity(
+            val entry = ClipboardEntry(
                 content = trimmed,
-                category = category,
-                sourceApp = sourceApp
+                timestamp = currentTime,
+                isPinned = false,
+                contentHash = hash,
+                sourcePackage = sourcePackage
             )
-            clipDao.insertClip(entity)
+            clipboardDao.insert(entry)
         }
     }
 
-    override suspend fun togglePin(clipId: Long, currentPinnedState: Boolean) {
-        clipDao.updatePinStatus(clipId, !currentPinnedState)
+    override suspend fun togglePin(id: Long, isPinned: Boolean) {
+        clipboardDao.togglePin(id, !isPinned)
     }
 
-    override suspend fun deleteClip(clip: ClipEntity) {
-        clipDao.deleteClip(clip)
+    override suspend fun deleteById(id: Long) {
+        clipboardDao.deleteById(id)
     }
 
-    override suspend fun clearUnpinnedHistory() {
-        clipDao.clearUnpinnedHistory()
-    }
-
-    private fun determineCategory(text: String): String {
-        return when {
-            text.startsWith("http://") || text.startsWith("https://") -> ClipEntity.CATEGORY_URL
-            text.contains("{") && text.contains("}") || text.contains("val ") || text.contains("fun ") -> ClipEntity.CATEGORY_CODE
-            else -> ClipEntity.CATEGORY_TEXT
-        }
+    override suspend fun clearUnpinned() {
+        clipboardDao.clearUnpinned()
     }
 }
