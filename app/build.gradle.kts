@@ -86,3 +86,10 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
+
+// Studio sync workaround: Android Studio (2026.2.1+) requests
+// prepareKotlinBuildScriptModel on :app, but the Kotlin Gradle plugin
+// (verified 2.0.21/2.1.20/2.2.21) only registers it on the root project.
+// This no-op satisfies the query so sync proceeds. Zero build impact.
+// Revisit on Studio upgrade (Rabbit 2+) or KGP change.
+tasks.register("prepareKotlinBuildScriptModel")
