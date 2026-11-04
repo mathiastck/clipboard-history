@@ -7,7 +7,7 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.mattkanninen.cliphistory.ui.components.ClipHistoryScreen
-import com.mattkanninen.cliphistory.ui.theme.PixelClipHistoryTheme
+import com.mattkanninen.cliphistory.ui.theme.ClipboardHistoryTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -18,7 +18,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            PixelClipHistoryTheme {
+            ClipboardHistoryTheme {
                 val uiState by viewModel.uiState.collectAsState()
 
                 ClipHistoryScreen(

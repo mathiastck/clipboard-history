@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Pixel Clip History</string>
+    <string name="app_name">Clipboard History</string>
     <string name="accessibility_service_label">Clipboard History Auto-Capture</string>
     <string name="accessibility_service_description">Captures system copy events in real-time to save clipboard history locally on device.</string>
     <string name="tile_label">Clipboard</string>

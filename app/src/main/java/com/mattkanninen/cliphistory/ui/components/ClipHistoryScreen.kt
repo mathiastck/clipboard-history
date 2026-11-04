@@ -67,7 +67,7 @@ fun ClipHistoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Pixel Clip History", fontWeight = FontWeight.Bold) },
+                title = { Text("Clipboard History", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ),

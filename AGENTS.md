@@ -19,7 +19,7 @@ This file contains operational guidelines, architectural standards, and develope
 ---
 
 ## 2. Project Overview
-- **Project Name:** PixelClipHistory
+- **Project Name:** ClipboardHistory
 - **Package Name:** `com.mattkanninen.cliphistory`
 - **Module Structure:** Single module (`:app`) with clean separation of layers (`data/`, `service/`, `ui/`, `di/`).
 - **Core Functionality:**

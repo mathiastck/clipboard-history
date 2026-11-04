@@ -77,7 +77,7 @@ class OverlayWindowService : Service() {
         }
 
         val notification: Notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Pixel Clip History")
+            .setContentTitle("Clipboard History")
             .setContentText("Quick-access clipboard overlay active")
             .setSmallIcon(R.drawable.ic_clipboard_tile)
             .build()

@@ -12,6 +12,6 @@ abstract class ClipDatabase : RoomDatabase() {
     abstract fun clipDao(): ClipDao
 
     companion object {
-        const val DATABASE_NAME = "pixel_clip_history.db"
+        const val DATABASE_NAME = "clipboard_history.db"
     }
 }

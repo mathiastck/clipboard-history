@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PixelClipHistory"
+rootProject.name = "ClipboardHistory"
 include(":app")
