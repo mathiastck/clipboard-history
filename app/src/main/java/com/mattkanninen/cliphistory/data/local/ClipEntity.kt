@@ -15,6 +15,8 @@ data class ClipEntity(
 ) {
     companion object {
         const val CATEGORY_TEXT = "Text"
+
+        //TODO MK
         const val CATEGORY_URL = "URL"
         const val CATEGORY_CODE = "Code"
         const val CATEGORY_PINNED = "Pinned"
