@@ -3,6 +3,7 @@ package com.mattkanninen.cliphistory.ui.components
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,15 +19,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -38,14 +49,22 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mattkanninen.cliphistory.data.ClipboardEntry
+import com.mattkanninen.cliphistory.service.OverlayWindowService
 import com.mattkanninen.cliphistory.ui.main.ClipHistoryUiState
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -59,10 +78,49 @@ fun ClipHistoryScreen(
     onCategorySelected: (String) -> Unit,
     onTogglePin: (ClipboardEntry) -> Unit,
     onDeleteClip: (ClipboardEntry) -> Unit,
-    onClearHistory: () -> Unit
+    onAddClip: (String) -> Unit,
+    onSearchActivated: () -> Unit,
+    onSearchDeactivated: () -> Unit,
+    onToggleBubbles: () -> Unit
 ) {
     val context = LocalContext.current
-    val categories = listOf("All", "Text", "URL", "Code")
+
+    //TODO: move these lists to a data class in or near view model
+    val focusManager = LocalFocusManager.current
+    val categories = if (uiState.isSearchActive) {
+        listOf("All", "Text", "URL", "Code")
+    } else {
+        listOf("All", "Unpinned", "Pinned")
+    }
+    var showMenu by remember { mutableStateOf(false) }
+    var addText by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
+    var lastSeenTopId by remember { mutableStateOf<Long?>(null) }
+
+    val topId = uiState.clips.firstOrNull()?.id
+    // TODO: if autoscroll annoys (loses scroll position), replace with an
+    // up-arrow badge signaling new data instead of jumping to it.
+    LaunchedEffect(topId) {
+        if (lastSeenTopId != null && topId != null && topId != lastSeenTopId
+            && !uiState.isSearchActive
+        ) {
+            listState.animateScrollToItem(0)
+        }
+        lastSeenTopId = topId
+    }
+
+    BackHandler(enabled = uiState.isSearchActive) {
+        focusManager.clearFocus()
+        onSearchDeactivated()
+    }
+
+    fun submitAdd() {
+        if (addText.isNotBlank()) {
+            onAddClip(addText)
+            addText = ""
+            focusManager.clearFocus()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -72,8 +130,66 @@ fun ClipHistoryScreen(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ),
                 actions = {
-                    IconButton(onClick = onClearHistory) {
-                        Icon(imageVector = Icons.Default.Delete, contentDescription = "Clear Unpinned History")
+                    if (!uiState.isSearchActive) {
+                        IconButton(onClick = onSearchActivated) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                //TODO externalize strings
+                                contentDescription = "Search"
+                            )
+                        }
+                    }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Menu"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            // TODO: clear-all lives here one day (with confirm). No rush.
+                            DropdownMenuItem(
+                                text = { Text("Clear all (coming soon)") },
+                                enabled = false,
+                                onClick = { showMenu = false }
+                            )
+                            // TODO: biometric lock option in this menu.
+                            DropdownMenuItem(
+                                text = { Text("Biometric lock (coming soon)") },
+                                enabled = false,
+                                onClick = { showMenu = false }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Bubbles") },
+                                trailingIcon = {
+                                    if (uiState.bubblesEnabled) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Bubbles On"
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onToggleBubbles()
+                                    context.startService(
+                                        Intent(
+                                            context,
+                                            OverlayWindowService::class.java
+                                        ).setAction(OverlayWindowService.ACTION_UPDATE_NOTIFICATION)
+                                    )
+                                }
+                            )
+                            // TODO: edge panel option in this menu (SAW overlay: position, auto-collapse, per-app exclusion).
+                            DropdownMenuItem(
+                                text = { Text("Edge panel (coming soon)") },
+                                enabled = false,
+                                onClick = { showMenu = false }
+                            )
+                        }
                     }
                 }
             )
@@ -85,23 +201,47 @@ fun ClipHistoryScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // Search Bar
-            OutlinedTextField(
-                value = uiState.searchQuery,
-                onValueChange = onSearchQueryChanged,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Search clipboard history...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                trailingIcon = {
-                    if (uiState.searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { onSearchQueryChanged("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear Search")
+            // Entry field: manual add by default, search on demand
+            if (uiState.isSearchActive) {
+                OutlinedTextField(
+                    value = uiState.searchQuery,
+                    onValueChange = onSearchQueryChanged,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Search clipboard history...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            focusManager.clearFocus()
+                            onSearchDeactivated()
+                        }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Exit Search")
                         }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(24.dp)
-            )
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(24.dp),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() })
+                )
+            } else {
+                OutlinedTextField(
+                    value = addText,
+                    onValueChange = { addText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Add a clip...") },
+                    leadingIcon = { Icon(Icons.Default.Add, contentDescription = "Add") },
+                    trailingIcon = {
+                        if (addText.isNotBlank()) {
+                            IconButton(onClick = { submitAdd() }) {
+                                Icon(Icons.Default.Send, contentDescription = "Save Clip")
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(24.dp),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { submitAdd() })
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -135,6 +275,7 @@ fun ClipHistoryScreen(
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(uiState.clips, key = { it.id }) { clip ->

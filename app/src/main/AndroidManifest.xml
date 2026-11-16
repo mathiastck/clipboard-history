@@ -18,10 +18,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ClipboardHistory">
 
-        <!-- Main Activity -->
+        <!-- Main Activity (allowEmbedded so it can open inside a notification bubble) -->
         <activity
             android:name=".ui.main.MainActivity"
             android:exported="true"
+            android:allowEmbedded="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.ClipboardHistory">
             <intent-filter>
